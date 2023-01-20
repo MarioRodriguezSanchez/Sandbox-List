@@ -24,6 +24,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Bundle;
+import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
@@ -65,6 +66,9 @@ public class MainActivity extends AppCompatActivity {
     private Button limpiarBusquedaBtn;
 
     private Switch cheapest;
+    private Switch restrictedSaleSwitch;
+
+    private boolean switch1State;
 
     private RequestQueue mRequestQueue;
     private JsonArrayRequest mJsonArrayRequest;
@@ -146,6 +150,17 @@ public class MainActivity extends AppCompatActivity {
             combustiblesSpinner.setSelection(Integer.parseInt(prefs.getString("IndiceCombustible", "0")));
 
         }
+
+        //Leemos el valor del Switch MostrarRestringidasSwitch
+        if(Boolean.parseBoolean(prefs.getString("MostrarRestringidasSwitch", "false")))
+        {
+            switch1State=true;
+        }
+        else
+        {
+            switch1State=false;
+        }
+
         // Initial request for CCAA
         mRequestQueue = Volley.newRequestQueue(this);
         mJsonArrayRequest = new JsonArrayRequest(Request.Method.GET, url, null, response -> {
@@ -345,6 +360,7 @@ public class MainActivity extends AppCompatActivity {
             editor.putString("IndiceMunicipio", String.valueOf(municipioSpinner.getSelectedItemPosition()));
             editor.putString("CheapestSwitch", String.valueOf(cheapest.isChecked()));
             editor.putString("IndiceCombustible", String.valueOf(combustiblesSpinner.getSelectedItemPosition()));
+            editor.putString("MostrarRestringidasSwitch",String.valueOf(switch1State));
             editor.commit();
 
 
@@ -354,7 +370,25 @@ public class MainActivity extends AppCompatActivity {
                     Gson gson = new Gson();
                     Gasolinera[] gasolineras = gson.fromJson(String.valueOf(response.getJSONArray("ListaEESSPrecio")), Gasolinera[].class);
 
+                    // Con estas cinco siguientes líneas consigo borrar un elemento de gasolineras. A ver si encuentro la manera de sólo borrar aquello objetos cuya venta='R'
+                    // int index = 1; // índice del objeto a eliminar
+                    // Gasolinera[] newArray = new Gasolinera[gasolineras.length - 1];
+                    // System.arraycopy(gasolineras, 0, newArray, 0, index);
+                    // System.arraycopy(gasolineras, index + 1, newArray, index, gasolineras.length - index - 1);
+                    // gasolineras = newArray;
+
+                    System.out.println( Arrays.stream(gasolineras).count());
+
+                    if (!switch1State) {
+                        ArrayList<Gasolinera> gasolinerasArrayList = new ArrayList<>();
+                        gasolinerasArrayList.addAll(Arrays.asList(gasolineras));
+                        gasolinerasArrayList.removeIf(p -> p.isRestricted());
+                        gasolineras = gasolinerasArrayList.toArray(new Gasolinera[gasolinerasArrayList.size()]);
+                    }
+
+
                     List<Gasolinera> gasolinerasList = Arrays.asList(gasolineras);
+
                     for (Gasolinera gasolinera : gasolinerasList) {
                         System.out.println(gasolinera.toString());
                     }
@@ -414,6 +448,22 @@ public class MainActivity extends AppCompatActivity {
                         .setTitle("INFO");
                 AlertDialog dialog = builder.create();
                 dialog.show();
+                return true;
+            case R.id.action_settings2:
+                LayoutInflater inflater = getLayoutInflater();
+                View dialogView = inflater.inflate(R.layout.settings_activity, null);
+                AlertDialog.Builder builder2 = new AlertDialog.Builder(this);
+                builder2.setView(dialogView);
+                AlertDialog dialog2 = builder2.create();
+                dialog2.show();
+
+
+
+                restrictedSaleSwitch = dialogView.findViewById(R.id.switch1);
+
+                restrictedSaleSwitch.setChecked(switch1State);
+                restrictedSaleSwitch.setOnCheckedChangeListener((buttonView, isChecked) -> switch1State = isChecked);
+
                 return true;
             default:
                 return super.onOptionsItemSelected(item);
